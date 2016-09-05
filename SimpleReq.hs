@@ -16,8 +16,10 @@ exports :: [(String, [T.LispVal] -> T.IOThrowsError T.LispVal, String)]
 exports = [("simplereq:get", makeReq $ wrap getWith, makeReqDoc "get"),
            ("simplereq:post", makeBReq $ wrap postWith, makeBReqDoc "post"),
            ("simplereq:put", makeBReq $ wrap putWith, makeBReqDoc "put"),
-           ("simplereq:delete", makeReq $ wrap deleteWith, makeReqDoc "delete")]
-    where wrap f = f (set checkStatus (Just $ \_ _ _ -> Nothing) defaults)
+           ("simplereq:delete", makeReq $ wrap deleteWith, makeReqDoc "delete"),
+           ("simplereq:request", makeGenericReq, genericReqDoc)]
+
+wrap f = f (set checkStatus (Just $ \_ _ _ -> Nothing) defaults)
 
 intersperse :: [String] -> String
 intersperse [] = ""
@@ -30,7 +32,7 @@ makeReqDoc method =
                "params:",
                "- url: the URL to access",
                "complexity: dependent on the complexity of the response",
-               "returns: a string representation of the response"]
+               "returns: a hashmap with the keys <zepto>:status</zepto>, <zepto>:body</zepto> and <zepto>headers</zepto>"]
 
 makeBReqDoc :: String -> String
 makeBReqDoc method =
@@ -41,7 +43,7 @@ makeBReqDoc method =
                "- url: the URL to access",
                "- body: the body to send",
                "complexity: dependent on the complexity of the response",
-               "returns: a string representation of the response"]
+               "returns: a hashmap with the keys <zepto>:status</zepto>, <zepto>:body</zepto> and <zepto>headers</zepto>"]
 
 treatResponse :: Network.Wreq.Response ByteString -> T.LispVal
 treatResponse r =
@@ -69,3 +71,25 @@ makeReq fun [T.SimpleVal (T.String url)] = do
   return $ treatResponse res
 makeReq _ [x] = throwError $ T.TypeMismatch "string" x
 makeReq _ x = throwError $ T.NumArgs 1 x
+
+genericReqDoc :: String
+genericReqDoc =
+  intersperse ["takes a string <par>method</par> and a string <par>url</par> ",
+               "and performs a request to that URL. Takes an optional payload.",
+               "",
+               "params:",
+               "- method: the request verb",
+               "- url: the URL to access",
+               "- payload: optional parameter that will be sent as request body",
+               "complexity: dependent on the complexity of the response",
+               "returns: a hashmap with the keys <zepto>:status</zepto>, <zepto>:body</zepto> and <zepto>headers</zepto>"]
+
+makeGenericReq :: [T.LispVal] -> T.IOThrowsError T.LispVal
+makeGenericReq [T.SimpleVal (T.String method), T.SimpleVal (T.String url)] = do
+  res <- liftIO $ (wrap (customMethodWith method)) url
+  return $ treatResponse res
+makeGenericReq [T.SimpleVal (T.String method),
+                T.SimpleVal (T.String url),
+                T.SimpleVal (T.String payload)] = do
+  res <- liftIO $ (wrap (customPayloadMethodWith method)) url (pack payload)
+  return $ treatResponse res
