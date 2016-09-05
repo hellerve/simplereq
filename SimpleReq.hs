@@ -1,20 +1,27 @@
 module SimpleReq where
 
-import Control.Lens ((^.))
+import Control.Lens ((^.), set)
+import Control.Monad.Except (throwError, liftIO)
+import Control.Exception (catch)
+import qualified Data.ByteString (ByteString)
 import Data.ByteString.Lazy (ByteString)
-import Data.ByteString.Char8 (unpack)
+import Data.ByteString.Char8 (pack, unpack)
 import Data.CaseInsensitive (original)
 import Data.Map (fromList)
-import Control.Monad.Except (throwError, liftIO)
 import Network.Wreq
 
 import qualified Zepto.Types as T
 
 exports :: [(String, [T.LispVal] -> T.IOThrowsError T.LispVal, String)]
-exports = [("simplereq:get", makeReq get, makeReqDoc "get"),
-           --("simplereq:post", makeBReq post, makeReqDoc "post"),
-           --("simplereq:put", makeBReq put, makeReqDoc "put"),
-           ("simplereq:delete", makeReq delete, makeReqDoc "delete")]
+exports = [("simplereq:get", makeReq $ wrap getWith, makeReqDoc "get"),
+           ("simplereq:post", makeBReq $ wrap postWith, makeBReqDoc "post"),
+           ("simplereq:put", makeBReq $ wrap putWith, makeBReqDoc "put"),
+           ("simplereq:delete", makeReq $ wrap deleteWith, makeReqDoc "delete")]
+    where wrap f = f (set checkStatus (Just $ \_ _ _ -> Nothing) defaults)
+
+intersperse :: [String] -> String
+intersperse [] = ""
+intersperse (x:xs) = x ++ "\n" ++ intersperse xs
 
 makeReqDoc :: String -> String
 makeReqDoc method =
@@ -24,8 +31,17 @@ makeReqDoc method =
                "- url: the URL to access",
                "complexity: dependent on the complexity of the response",
                "returns: a string representation of the response"]
-    where intersperse [] = ""
-          intersperse (x:xs) = x ++ "\n" ++ intersperse xs
+
+makeBReqDoc :: String -> String
+makeBReqDoc method =
+  intersperse ["takes a string <par>url</par> and performs a " ++ method ++ " request to that URL",
+               "using the body specified in <par>body</par>.",
+               "",
+               "params:",
+               "- url: the URL to access",
+               "- body: the body to send",
+               "complexity: dependent on the complexity of the response",
+               "returns: a string representation of the response"]
 
 treatResponse :: Network.Wreq.Response ByteString -> T.LispVal
 treatResponse r =
@@ -37,12 +53,14 @@ treatResponse r =
           treatHeader (header, val) = (T.String $ unpack $ original header,
                                        T.fromSimple $ T.String $ unpack val)
 
-makeBReq :: (String -> IO (Response ByteString)) -> [T.LispVal] -> T.IOThrowsError T.LispVal
-makeBReq fun [T.SimpleVal (T.String url)] = do
-  res <- liftIO $ fun url
+makeBReq :: (String -> Data.ByteString.ByteString -> IO (Response ByteString))
+         -> [T.LispVal]
+         -> T.IOThrowsError T.LispVal
+makeBReq fun [T.SimpleVal (T.String url), T.SimpleVal (T.String body)] = do
+  res <- liftIO $ fun url (pack body)
   return $ treatResponse res
-makeBReq _ [x, _] = throwError $ T.TypeMismatch "string" x
-makeBReq _ [_, x] = throwError $ T.TypeMismatch "hashmap" x
+makeBReq _ [x, T.SimpleVal (T.String _)] = throwError $ T.TypeMismatch "string" x
+makeBReq _ [_, x] = throwError $ T.TypeMismatch "string" x
 makeBReq _ x = throwError $ T.NumArgs 1 x
 
 makeReq :: (String -> IO (Response ByteString)) -> [T.LispVal] -> T.IOThrowsError T.LispVal
