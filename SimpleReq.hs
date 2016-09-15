@@ -10,7 +10,7 @@ import Data.CaseInsensitive (original)
 import Data.Map (fromList)
 import Network.Wreq
 
-import qualified Zepto.Types as T
+import qualified Zepto.Types.Export as T
 
 exports :: [(String, [T.LispVal] -> T.IOThrowsError T.LispVal, String)]
 exports = [("simplereq:get", makeReq $ wrap getWith, makeReqDoc "get"),
