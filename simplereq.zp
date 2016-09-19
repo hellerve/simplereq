@@ -1,0 +1,9 @@
+(module "simplereq"
+  (export
+    `("get"     ,simplereq:get)
+    `("post"    ,simplereq:post)
+    `("put"     ,simplereq:put)
+    `("delete"  ,simplereq:delete)
+    `("request" ,simplereq:request))
+
+  (loads "simplereq/SimpleReqInternal"))

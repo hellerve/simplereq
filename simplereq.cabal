@@ -1,5 +1,5 @@
 name:                simplereq
-version:             0.0.3
+version:             0.0.4
 author:              Veit Heller
 maintainer:          veit@veitheller.de
 build-type:          Simple
@@ -7,11 +7,10 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     SimpleReq
+  exposed-modules:     SimpleReqInternal
   build-depends:       base >=4.9 && <4.10,
                        bytestring,
                        case-insensitive,
-                       containers,
                        lens,
                        mtl,
                        wreq,

@@ -1,4 +1,4 @@
-module SimpleReq where
+module SimpleReqInternal where
 
 import Control.Lens ((^.), set)
 import Control.Monad.Except (throwError, liftIO)
@@ -7,10 +7,9 @@ import qualified Data.ByteString (ByteString)
 import Data.ByteString.Lazy (ByteString)
 import Data.ByteString.Char8 (pack, unpack)
 import Data.CaseInsensitive (original)
-import Data.Map (fromList)
 import Network.Wreq
 
-import qualified Zepto.Types as T
+import qualified Zepto.Types.Export as T
 
 exports :: [(String, [T.LispVal] -> T.IOThrowsError T.LispVal, String)]
 exports = [("simplereq:get", makeReq $ wrap getWith, makeReqDoc "get"),
@@ -47,10 +46,10 @@ makeBReqDoc method =
 
 treatResponse :: Network.Wreq.Response ByteString -> T.LispVal
 treatResponse r =
-  T.HashMap $ fromList
+  T.HashMap $ T.fromListMap
         [(T.Atom ":status", T.fromSimple $ T.Number (T.NumS (r ^. responseStatus . statusCode))),
          (T.Atom ":body", T.fromSimple $ T.String $ show (r ^. responseBody)),
-         (T.Atom ":headers", T.HashMap $ fromList $ treatHeaders)]
+         (T.Atom ":headers", T.HashMap $ T.fromListMap $ treatHeaders)]
     where treatHeaders = map treatHeader (r ^. responseHeaders)
           treatHeader (header, val) = (T.String $ unpack $ original header,
                                        T.fromSimple $ T.String $ unpack val)

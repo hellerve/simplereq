@@ -15,7 +15,9 @@ simplereq exposes the REST verbs and a generic verb function.
 You can see it in action below:
 
 ```clojure
-(load "simplereq/SimpleReq")
+(load "simplereq/simplereq")
+(import-all "simplereq")
+
 (simplereq:get "https://httpbin.org/get")
 (simplereq:post "https://httpbin.org/post" "hi httpbin")
 (simplereq:put "https://httpbin.org/put" "hi httpbin")
